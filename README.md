@@ -1,150 +1,125 @@
-# 🚀 Gemini Usage Monitor & Session Telemetry
+# Gemini Usage Monitor & Session Telemetry
 
-A state-of-the-art KDE Plasma 6 widget and telemetry companion that stealthily monitors your Google Gemini rolling 5-hour usage capacity and weekly budget directly on your Linux desktop or panel. It features robust multilingual scraping, network-aware auto-refresh, and a detailed session analytics dashboard.
+A KDE Plasma 6 widget and diagnostic tool that tracks your Google Gemini rolling 5-hour usage limits and weekly budget.
 
----
-
-## 🌟 Key Features
-
-*   **Real-time Desktop Widget:** Premium-styled panel and desktop widget with harmonized dark/light theme colors, glassmorphic layout, and Kirigami animations.
-*   **Puppeteer Stealth Scraper (`get_usage.js`):** High-fidelity Puppeteer scraper utilizing advanced fingerprint masking, client-hints sync, and human-mouse scroll emulation to evade Google bot-detection.
-*   **Multilingual Date Engine:** Natively parses dates, accents, and punctuation marks in English, Czech, German, French, Spanish, Portuguese, and Italian.
-*   **Redirect-Loop Prevention:** Bulletproof request interceptor that limits cookie injections strictly to `gemini.google.com`, cleanly reporting `auth_error` when credentials expire.
-*   **Network-Aware Sync:** Automatically detects laptop awake states and network reconnection triggers via native Plasma network bindings to refresh statistics immediately.
-*   **Session Telemetry Companion (`query_session_usage.py`):** Programmatic Python tool that parses Antigravity conversation logs, providing a beautiful HSL-bar console dashboard of your context window consumption (User Prompts, Agent Reasonings, Tool Outputs).
+*Developed with the assistance of the Antigravity CLI.*
 
 ---
 
-## 📦 System Dependencies Installation
+## Features
 
-The scraper requires **Node.js** (v16+) and a Chromium-based browser (Chrome, Chromium, Brave, or Edge). 
-
-Installing your distribution's standard Chromium/Chrome package is the recommended approach, as it automatically pulls in all required system graphic, font, and audio libraries (like `nss`, `atk`, `gbm`, and `xcomposite`) required for headless execution.
-
-### 🔵 Fedora / RHEL / CentOS
-1.  **Install Node.js, npm, and Python:**
-    ```bash
-    sudo dnf install nodejs npm python3
-    ```
-2.  **Install Chromium (recommended for pulling in all headless rendering libraries):**
-    ```bash
-    sudo dnf install chromium
-    ```
-3.  **Alternative (Google Chrome Stable):**
-    If you prefer Google Chrome:
-    ```bash
-    sudo dnf config-manager --set-enabled google-chrome
-    sudo dnf install google-chrome-stable
-    ```
-4.  **Minimal/Server Headless Dependencies:**
-    If you are running a minimal or headless Fedora setup and encounter shared-library issues, install these graphics libraries:
-    ```bash
-    sudo dnf install alsa-lib atk cups-libs gtk3 libXcomposite libXcursor libXdamage libXext libXfixes libXi libXrandr libXrender libXtst libxcb libxshmfence nss pango mesa-libgbm
-    ```
-
-### 🟠 Ubuntu / Debian / Linux Mint
-1.  **Install Node.js, npm, and Python:**
-    ```bash
-    sudo apt update
-    sudo apt install nodejs npm python3
-    ```
-2.  **Install Chromium:**
-    ```bash
-    sudo apt install chromium-browser
-    ```
-3.  **Minimal/Server Headless Dependencies:**
-    ```bash
-    sudo apt install libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxkbcommon0 libpango-1.0-0 libasound2
-    ```
-
-### 🔴 Arch Linux
-1.  **Install Node.js, npm, Python, and Chromium:**
-    ```bash
-    sudo pacman -S nodejs npm python3 chromium
-    ```
+* **KDE Plasma 6 Widget:** Displays rolling 5-hour limit and weekly budget directly on your desktop or panel. Automatically adapts its layout for panel placement (compact ring) and desktop placement (full view).
+* **Automated Scraper (`get_usage.js`):** A Node.js Puppeteer script that signs in and extracts usage metrics from `gemini.google.com`.
+* **Multilingual support:** Date and number extraction handles localized dates in English, Czech, German, French, Spanish, Portuguese, and Italian.
+* **Network-Aware:** Auto-refreshes when waking up from suspend or when a network connection is re-established.
+* **Context Telemetry Companion (`query_session_usage.py`):** A command-line script to inspect the token consumption and reasoning details of your local Antigravity conversation transcripts.
 
 ---
 
-## 🔧 Installation & Project Setup
+## Installation & Prerequisites
 
-### 1. Install Node Dependencies
-Navigate to the project workspace and install the required npm dependencies (`puppeteer-core` for the browser scraper):
+To run the scraper, you need **Node.js** (v16+) and a Chromium-based browser (Chrome, Chromium, Brave, or Microsoft Edge). Installing Chrome/Chromium via your system package manager is recommended as it pulls in all necessary system libraries (e.g. `nss`, `atk`, `gbm`, `xcomposite`) automatically.
+
+### Fedora (Recommended)
+
+1. Install Node.js, npm, and Python:
+   ```bash
+   sudo dnf install nodejs npm python3
+   ```
+
+2. Install Chromium (recommended for system libraries):
+   ```bash
+   sudo dnf install chromium
+   ```
+   Or if you prefer Google Chrome:
+   ```bash
+   sudo dnf config-manager --set-enabled google-chrome
+   sudo dnf install google-chrome-stable
+   ```
+
+### Ubuntu / Debian
+
+1. Install Node.js, npm, and Python:
+   ```bash
+   sudo apt update
+   sudo apt install nodejs npm python3
+   ```
+
+2. Install Chromium:
+   ```bash
+   sudo apt install chromium-browser
+   ```
+
+### Arch Linux
+
+1. Install Node.js, npm, Python, and Chromium:
+   ```bash
+   sudo pacman -S nodejs npm python3 chromium
+   ```
+
+---
+
+## Getting Started
+
+### 1. Install Node.js dependencies
+Run this inside the widget root directory:
 ```bash
-cd /home/jreznik/gemini/plasma-gemini-usage
 npm install
 ```
 
-### 2. Register the Plasmoid with KDE Plasma 6
-Install the widget to your local user directory:
+### 2. Register the Plasmoid
+Install the widget to your local Plasma applets directory:
 ```bash
 kpackagetool6 -i . -t Plasma/Applet
 ```
-*Note: If updating an existing installation, use:*
+If you are upgrading an existing installation:
 ```bash
 kpackagetool6 -u . -t Plasma/Applet
 ```
 
-Alternatively, copy the files directly to your Plasmoids directory:
-```bash
-mkdir -p ~/.local/share/plasma/plasmoids/org.kde.plasma.geminiusage
-cp -r * ~/.local/share/plasma/plasmoids/org.kde.plasma.geminiusage/
-```
-
-### 3. Restart Plasma Shell to Load
-Restart the desktop environment to load the widget instantly:
+### 3. Reload Plasma Shell
+To make the widget visible immediately:
 ```bash
 plasmashell --replace &
 ```
 
 ---
 
-## 🚀 Usage
+## Usage
 
-### Desktop Widget Configuration
-1.  Add the **"Gemini Usage Monitor"** widget to your panel or desktop.
-2.  Right-click and select **"Configure Gemini Usage Monitor..."**.
-3.  Click **"Launch Sign-in Browser"** to log in to your Google Account. 
-4.  Once successfully authenticated, close the browser. The scraper will automatically extract your active cookies, securely write them to `~/.config/plasma-gemini-usage/config.json`, and refresh your statistics.
+### 1. Widget Configuration & Sign-in
+1. Add **"Gemini Usage Monitor"** to your desktop or panel.
+2. Right-click and choose **"Configure Gemini Usage Monitor..."**.
+3. Click **"Launch Sign-in Browser"** and log in to your Google Account.
+4. Close the browser once signed in. The widget will automatically extract the session cookies, save them to `~/.config/plasma-gemini-usage/config.json`, and run the scraper.
 
-### Programmatic Scraper Manual Run
-You can run the scraper from the command line to fetch fresh JSON output or diagnose connection states:
+### 2. Running the Scraper Manually
+You can run the script manually to verify it works or check raw JSON data:
 ```bash
 node get_usage.js
 ```
-**Example output:**
-```json
-{
-  "status": "success",
-  "five_hour_pct": 12,
-  "weekly_pct": 3,
-  "countdown": "Active",
-  "five_hour_reset_epoch": 1779491940,
-  "weekly_reset_epoch": 1779779940,
-  "five_hour_reset_str": "Resets at 1:19 AM",
-  "weekly_reset_str": "Resets May 26 at 9:19 AM",
-  "timestamp": 1779478029
-}
-```
 
-### Session Telemetry & Context Dashboard
-To inspect your active Antigravity conversation telemetry (tokens consumed, remaining, and category breakdowns):
+### 3. Conversation Telemetry CLI
+To see your token consumption metrics:
 ```bash
-# Standard console dashboard
 python3 query_session_usage.py
-
-# Programmatic raw JSON output
+```
+Or export raw stats as JSON:
+```bash
 python3 query_session_usage.py --json
 ```
 
 ---
 
-## 📂 Configuration Paths
-*   **Config Folder:** `~/.config/plasma-gemini-usage/`
-*   **Active Session Cache:** `~/.config/plasma-gemini-usage/cache.json`
-*   **Session Credentials:** `~/.config/plasma-gemini-usage/config.json`
-*   **Puppeteer Execution Logs:** `~/.config/plasma-gemini-usage/puppeteer.log`
+## File and Config Paths
+
+* **Config Directory:** `~/.config/plasma-gemini-usage/`
+* **Session Credentials:** `~/.config/plasma-gemini-usage/config.json`
+* **Cache File:** `~/.config/plasma-gemini-usage/cache.json`
+* **Puppeteer Log:** `~/.config/plasma-gemini-usage/puppeteer.log`
 
 ---
 
-## 📄 License
-This project is licensed under the GPL-2.0-or-later License - see the `metadata.json` for details.
+## License
+
+This project is licensed under the GPL-3.0-or-later License. See `metadata.json` and the `LICENSE` file for details.

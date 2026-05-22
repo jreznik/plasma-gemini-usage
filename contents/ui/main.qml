@@ -75,6 +75,9 @@ PlasmoidItem {
     readonly property string userAgent: plasmoid.configuration.userAgent || ""
     readonly property int updateInterval: plasmoid.configuration.updateInterval || 900
 
+    // Scraper Script Path resolved dynamically (compatible with store installations)
+    readonly property string scraperPath: Qt.resolvedUrl("../../get_usage.js").toString().replace("file://", "")
+
     // Listen to changes to sync the python scraper config
     onCookieChanged: syncConfig()
     onUserAgentChanged: syncConfig()
@@ -140,10 +143,53 @@ PlasmoidItem {
             watchdogTimer.interval = 120000
 
             var exitCode = data["exit code"]
-            var stdout = data["stdout"]
-            var stderr = data["stderr"]
+            var stdout = data["stdout"] || ""
+            var stderr = data["stderr"] || ""
 
             disconnectSource(sourceName)
+
+            // Robust checks to detect missing system dependencies gracefully
+            var nodeMissing = (exitCode === 127 || 
+                               stderr.indexOf("node: command not found") !== -1 || 
+                               stderr.indexOf("node: not found") !== -1 ||
+                               stderr.indexOf("executable not found") !== -1 ||
+                               (exitCode !== 0 && stdout.trim() === "" && stderr.trim() === ""));
+
+            var depsMissing = (stderr.indexOf("Cannot find module 'puppeteer-core'") !== -1 || 
+                               stderr.indexOf("Cannot find module") !== -1);
+
+            var chromeMissing = (stderr.indexOf("Could not find Chrome") !== -1 || 
+                                 stderr.indexOf("executablePath") !== -1 || 
+                                 stderr.indexOf("Failed to launch the browser process") !== -1);
+
+            if (nodeMissing) {
+                root.isSyncing = false
+                root.status = "error"
+                root.errorMessage = i18n("Node.js is not installed. Please install 'nodejs' and 'npm' via your system package manager (e.g. 'sudo dnf install nodejs' on Fedora) to run the scraper.")
+                return
+            }
+
+            if (depsMissing) {
+                root.isSyncing = false
+                root.status = "error"
+                var widgetFolder = Qt.resolvedUrl("../../").toString().replace("file://", "")
+                root.errorMessage = i18n("Missing dependencies. Please run 'npm install' in the widget folder to install Puppeteer:\n%1", widgetFolder)
+                return
+            }
+
+            if (chromeMissing) {
+                root.isSyncing = false
+                root.status = "error"
+                root.errorMessage = i18n("Google Chrome/Chromium could not be launched. Please install Google Chrome or Chromium via your system package manager.")
+                return
+            }
+
+            if (exitCode !== 0 && sourceName.indexOf("--save-config") === -1) {
+                root.isSyncing = false
+                root.status = "error"
+                root.errorMessage = i18n("Execution error (Exit code: %1). Details: %2", exitCode, stderr.trim() || i18n("Unknown error"))
+                return
+            }
 
             if (sourceName.indexOf("--save-config") !== -1) {
                 // Config synced successfully, trigger initial fetch
@@ -221,7 +267,7 @@ PlasmoidItem {
         var exp = root.updateInterval || 900
         var escapedCookie = c.toString().replace(/'/g, "'\\''")
         var escapedUA = ua.toString().replace(/'/g, "'\\''")
-        var cmd = "node /home/jreznik/gemini/plasma-gemini-usage/get_usage.js --save-config --cookie '" + escapedCookie + "' --user-agent '" + escapedUA + "' --expiry " + exp
+        var cmd = "node " + root.scraperPath + " --save-config --cookie '" + escapedCookie + "' --user-agent '" + escapedUA + "' --expiry " + exp
         executable.connectSource(cmd)
     }
 
@@ -234,7 +280,7 @@ PlasmoidItem {
         watchdogTimer.start()
         root.status = "loading"
         root.errorMessage = i18n("Interactive browser opened. Please sign in to Google Chrome.")
-        var cmd = "node /home/jreznik/gemini/plasma-gemini-usage/get_usage.js --login"
+        var cmd = "node " + root.scraperPath + " --login"
         executable.connectSource(cmd)
     }
 
@@ -244,7 +290,7 @@ PlasmoidItem {
         root.isSyncing = true
         watchdogTimer.interval = 120000
         watchdogTimer.start()
-        var cmd = "node /home/jreznik/gemini/plasma-gemini-usage/get_usage.js"
+        var cmd = "node " + root.scraperPath
         executable.connectSource(cmd)
     }
 
@@ -492,7 +538,8 @@ PlasmoidItem {
             // 2. ERROR/BANNER SECTION (if auth_error or error)
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Kirigami.Units.gridUnit * 2.8
+                // Dynamic height matching content size to support long troubleshooting instructions perfectly
+                implicitHeight: errorLayout.implicitHeight + Kirigami.Units.smallSpacing * 2
                 visible: root.status === "auth_error" || root.status === "error"
                 color: root.status === "auth_error" 
                     ? Qt.rgba(Kirigami.Theme.negativeTextColor.r, Kirigami.Theme.negativeTextColor.g, Kirigami.Theme.negativeTextColor.b, 0.15) 
@@ -502,7 +549,10 @@ PlasmoidItem {
                 radius: 6
 
                 RowLayout {
-                    anchors.fill: parent
+                    id: errorLayout
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
                     anchors.margins: Kirigami.Units.smallSpacing
                     spacing: Kirigami.Units.mediumSpacing
 
@@ -511,6 +561,7 @@ PlasmoidItem {
                         source: root.errorIconSource
                         Layout.preferredWidth: Kirigami.Units.iconSizes.small
                         Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                        Layout.alignment: Qt.AlignTop
                     }
 
                     PlasmaComponents.Label {
@@ -518,18 +569,25 @@ PlasmoidItem {
                         text: root.errorMessage
                         font: Kirigami.Theme.smallFont
                         wrapMode: Text.WordWrap
+                        // Enable selection so user can easily copy the command and the exact folder path!
+                        selectByMouse: true
                     }
 
-                    Button {
-                        text: i18n("Sign In...")
-                        visible: root.status === "auth_error"
-                        enabled: !root.isSyncing
-                        onClicked: root.triggerLogin()
-                    }
+                    ColumnLayout {
+                        spacing: Kirigami.Units.smallSpacing
+                        Layout.alignment: Qt.AlignVCenter
 
-                    Button {
-                        text: i18n("Configure")
-                        onClicked: Plasmoid.internalAction("configure").trigger()
+                        Button {
+                            text: i18n("Sign In...")
+                            visible: root.status === "auth_error"
+                            enabled: !root.isSyncing
+                            onClicked: root.triggerLogin()
+                        }
+
+                        Button {
+                            text: i18n("Configure")
+                            onClicked: Plasmoid.internalAction("configure").trigger()
+                        }
                     }
                 }
             }

@@ -34,6 +34,9 @@ Kirigami.FormLayout {
     property int cfg_updateIntervalDefault: 900
     property string title: ""
 
+    // Scraper Script Path resolved dynamically (compatible with store installations)
+    readonly property string scraperPath: Qt.resolvedUrl("../../get_usage.js").toString().replace("file://", "")
+
     Plasma5Support.DataSource {
         id: settingsExecutable
         engine: "executable"
@@ -41,13 +44,43 @@ Kirigami.FormLayout {
 
         onNewData: (sourceName, data) => {
             var exitCode = data["exit code"]
-            var stdout = data["stdout"]
-            var stderr = data["stderr"]
+            var stdout = data["stdout"] || ""
+            var stderr = data["stderr"] || ""
 
             disconnectSource(sourceName)
 
             if (sourceName.indexOf("--login") !== -1) {
                 signInButton.enabled = true
+
+                // Robust dependency checks inside the settings panel
+                var nodeMissing = (exitCode === 127 || 
+                                   stderr.indexOf("node: command not found") !== -1 || 
+                                   stderr.indexOf("node: not found") !== -1 ||
+                                   stderr.indexOf("executable not found") !== -1 ||
+                                   (exitCode !== 0 && stdout.trim() === "" && stderr.trim() === ""));
+
+                var depsMissing = (stderr.indexOf("Cannot find module 'puppeteer-core'") !== -1 || 
+                                   stderr.indexOf("Cannot find module") !== -1);
+
+                var chromeMissing = (stderr.indexOf("Could not find Chrome") !== -1 || 
+                                     stderr.indexOf("executablePath") !== -1 || 
+                                     stderr.indexOf("Failed to launch the browser process") !== -1);
+
+                if (nodeMissing) {
+                    signInStatusLabel.text = i18n("Node.js is not installed. Please install 'nodejs' and 'npm'.")
+                    return
+                }
+
+                if (depsMissing) {
+                    signInStatusLabel.text = i18n("Missing dependencies. Run 'npm install' in the widget folder.")
+                    return
+                }
+
+                if (chromeMissing) {
+                    signInStatusLabel.text = i18n("Google Chrome/Chromium could not be launched.")
+                    return
+                }
+
                 if (exitCode === 0) {
                     try {
                         var cleaned = stdout.trim()
@@ -63,7 +96,7 @@ Kirigami.FormLayout {
                         signInStatusLabel.text = i18n("Error parsing credentials.")
                     }
                 } else {
-                    signInStatusLabel.text = i18n("Interactive browser closed or timed out.")
+                    signInStatusLabel.text = i18n("Interactive browser closed or timed out (Exit: %1).", exitCode)
                 }
             }
         }
@@ -102,7 +135,7 @@ Kirigami.FormLayout {
             onClicked: {
                 signInButton.enabled = false
                 signInStatusLabel.text = i18n("Opening browser... Check your desktop.")
-                settingsExecutable.connectSource("node /home/jreznik/gemini/plasma-gemini-usage/get_usage.js --login")
+                settingsExecutable.connectSource("node " + page.scraperPath + " --login")
             }
         }
 
