@@ -1,0 +1,58 @@
+name: Package & Release Plasmoid
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Package Plasmoid
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Zip Utility
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Make Script Executable
+        run: chmod +x package.sh
+
+      - name: Run Packaging Script
+        run: ./package.sh
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: org.kde.plasma.geminiusage-plasmoid
+          path: org.kde.plasma.geminiusage.plasmoid
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: org.kde.plasma.geminiusage.plasmoid
+          name: Release ${{ github.ref_name }}
+          body: |
+            Automatic packaging of the Gemini Usage Monitor KDE Plasma 6 widget.
+            
+            ### 📦 Installation
+            Download the `org.kde.plasma.geminiusage.plasmoid` asset below and install it using:
+            ```bash
+            kpackagetool6 -i org.kde.plasma.geminiusage.plasmoid -t Plasma/Applet
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

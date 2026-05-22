@@ -12,3 +12,6 @@ Thumbs.db
 *~
 # Antigravity CLI workspace assets
 .antigravitycli/
+
+# Compiled Plasmoid Packages
+*.plasmoid
