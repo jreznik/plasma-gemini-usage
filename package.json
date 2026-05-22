@@ -1,0 +1,15 @@
+{
+  "name": "plasma-gemini-usage",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Jaroslav Reznik",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "puppeteer-core": "^25.0.4"
+  }
+}

@@ -1,0 +1,14 @@
+# Node dependencies
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# System & OS files
+.DS_Store
+Thumbs.db
+*~
+# Antigravity CLI workspace assets
+.antigravitycli/
