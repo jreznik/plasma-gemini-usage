@@ -569,8 +569,6 @@ PlasmoidItem {
                         text: root.errorMessage
                         font: Kirigami.Theme.smallFont
                         wrapMode: Text.WordWrap
-                        // Enable selection so user can easily copy the command and the exact folder path!
-                        selectByMouse: true
                     }
 
                     ColumnLayout {
