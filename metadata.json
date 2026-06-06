@@ -8,7 +8,7 @@
         ],
         "Category": "Utilities",
         "Description": "Stealthily monitors your Gemini rolling 5-hour limit and weekly budget directly on your desktop or panel.",
-        "Icon": "contents/icons/gemini.svg",
+        "Icon": "org.kde.plasma.geminiusage",
         "Id": "org.kde.plasma.geminiusage",
         "License": "GPL-3.0-or-later",
         "Name": "Gemini Usage Monitor",
