@@ -41,7 +41,30 @@ jobs:
           path: org.kde.plasma.geminiusage.plasmoid
           if-no-files-found: error
 
-      - name: Create GitHub Release
+      - name: Create or Update Snapshot Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: snapshot
+          files: org.kde.plasma.geminiusage.plasmoid
+          name: Snapshot Build
+          body: |
+            Rolling snapshot build generated from the latest commit on `main`.
+
+            Commit: ${{ github.sha }}
+
+            ### 📦 Installation
+            Download the `org.kde.plasma.geminiusage.plasmoid` asset below and install it using:
+            ```bash
+            kpackagetool6 -i org.kde.plasma.geminiusage.plasmoid -t Plasma/Applet
+            ```
+          prerelease: true
+          draft: false
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Tagged Stable Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
@@ -49,7 +72,7 @@ jobs:
           name: Release ${{ github.ref_name }}
           body: |
             Automatic packaging of the Gemini Usage Monitor KDE Plasma 6 widget.
-            
+
             ### 📦 Installation
             Download the `org.kde.plasma.geminiusage.plasmoid` asset below and install it using:
             ```bash
@@ -57,5 +80,6 @@ jobs:
             ```
           draft: false
           prerelease: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
